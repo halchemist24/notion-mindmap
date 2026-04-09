@@ -25,6 +25,11 @@ canvas#mc{display:block;cursor:grab;touch-action:none;}
 canvas#mc.dragging{cursor:grabbing;}
 #minimap{position:absolute;bottom:14px;right:14px;width:150px;height:94px;border:1px solid #e2e2de;border-radius:8px;background:rgba(255,255,255,.93);overflow:hidden;pointer-events:none;}
 #minimap canvas{width:100%;height:100%;}
+@media(max-width:600px){#minimap{display:none;}}
+
+/* 모바일 편집 완료 버튼 */
+#editor-done{position:fixed;display:none;z-index:201;background:#37352f;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18);}
+
 
 #node-editor{position:fixed;display:none;font-family:-apple-system,'Segoe UI',sans-serif;border:1.5px solid #378add;border-radius:6px;padding:4px 10px;background:#fff;font-size:13px;color:#37352f;outline:none;resize:none;overflow:hidden;text-align:center;line-height:1.5;z-index:200;min-width:60px;}
 
@@ -101,6 +106,7 @@ canvas#mc.dragging{cursor:grabbing;}
 </div>
 
 <textarea id="node-editor" rows="1"></textarea>
+<button id="editor-done">완료</button>
 <div id="ctx-menu"></div>
 <div id="hl-picker">
   <div class="hl-label">하이라이트 태그</div>
@@ -470,7 +476,7 @@ mc.addEventListener('mouseup',e=>{
 mc.addEventListener('dblclick',e=>{
   const rect=mc.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
   const hit=hitNode(mx,my);
-  if(!hit){addRootAt(toWo(mx,my));return;}
+  if(!hit)return;
   openEditor(hit);
 });
 
@@ -517,40 +523,39 @@ mc.addEventListener('touchstart',e=>{
     const pos=getTouchPos(touch1);
     const hit=hitNode(pos.x,pos.y);
 
-    // 더블탭 감지
+    // 더블탭 감지 (노드에만 적용)
     const now=Date.now();
-    const isDoubleTap=now-tLastTap<320&&tLastNode===hit;
+    const isDoubleTap=now-tLastTap<320&&tLastNode===hit&&hit!=null;
     tLastTap=now;tLastNode=hit;
 
     if(isDoubleTap){
       clearTimeout(tLongTimer);
-      if(hit)openEditor(hit);
-      else addRootAt(toWo(pos.x,pos.y));
+      openEditor(hit);
       return;
     }
 
-    // 롱프레스 감지 (500ms)
-    clearTimeout(tLongTimer);
-    tLongTimer=setTimeout(()=>{
-      if(tDidDrag)return;
-      const p2=getTouchPos(touch1);
-      const hitL=hitNode(p2.x,p2.y);
-      if(hitL&&!selectedIds.has(hitL.id)){selectedIds.clear();selectedIds.add(hitL.id);draw();}
-      showCtxMenu(touch1.clientX,touch1.clientY,hitL,p2.x,p2.y);
-    },500);
-
     tDidDrag=false;
+
     if(hit){
-      // 노드 드래그
+      // 노드 터치 → 드래그 준비 (롱프레스 없음)
       if(!selectedIds.has(hit.id)){selectedIds.clear();selectedIds.add(hit.id);}
       tDraggingNode=hit;
       const w=toWo(pos.x,pos.y);
       tDragOff={x:w.x-hit.x,y:w.y-hit.y};
+      clearTimeout(tLongTimer); // 노드 위에선 롱프레스 불필요
     }else{
-      // 배경 패닝
+      // 빈 공간 → 패닝 + 롱프레스(컨텍스트메뉴)
       tDraggingNode=null;
       tPanStart={x:touch1.clientX,y:touch1.clientY};
       tPanOrig={x:pan.x,y:pan.y};
+
+      clearTimeout(tLongTimer);
+      tLongTimer=setTimeout(()=>{
+        if(tDidDrag)return;
+        const p2=getTouchPos(touch1);
+        const hitL=hitNode(p2.x,p2.y);
+        showCtxMenu(touch1.clientX,touch1.clientY,hitL,p2.x,p2.y);
+      },500);
     }
   }
 
@@ -598,7 +603,9 @@ mc.addEventListener('touchmove',e=>{
     const pos=getTouchPos(t);
     const dx=t.clientX-(tPanStart?tPanStart.x:t.clientX);
     const dy=t.clientY-(tPanStart?tPanStart.y:t.clientY);
-    if(Math.abs(dx)>4||Math.abs(dy)>4){tDidDrag=true;clearTimeout(tLongTimer);}
+    if(Math.abs(dx)>4||Math.abs(dy)>4){
+      if(!tDidDrag){tDidDrag=true;clearTimeout(tLongTimer);}
+    }
 
     if(tDraggingNode){
       const w=toWo(pos.x,pos.y);
@@ -690,26 +697,56 @@ function addRootAt(wp){
 // 인라인 편집기
 // ══════════════════════════════════════════════
 const editor=document.getElementById('node-editor');
+const editorDone=document.getElementById('editor-done');
 let editTarget=null;
+const isMobile=()=>window.matchMedia('(max-width:600px)').matches||('ontouchstart' in window);
+
 function openEditor(n){
-  editTarget=n;const m=measure(n),s=toSc(n.x,n.y),rect=wrap.getBoundingClientRect();
-  editor.style.left=(s.x-m.w/2*zoom+rect.left)+'px';editor.style.top=(s.y-m.h/2*zoom+rect.top)+'px';
+  editTarget=n;
+  const m=measure(n),s=toSc(n.x,n.y),rect=wrap.getBoundingClientRect();
+  const ex=s.x-m.w/2*zoom+rect.left, ey=s.y-m.h/2*zoom+rect.top;
+  editor.style.left=ex+'px';editor.style.top=ey+'px';
   editor.style.width=(m.w*zoom)+'px';editor.style.minHeight=(m.h*zoom)+'px';editor.style.fontSize=(m.fz*zoom)+'px';
-  editor.value=n.label;editor.style.display='block';editor.focus();editor.select();
+  editor.value=n.label;editor.style.display='block';
   editor.addEventListener('input',resizeEd);resizeEd();
+
+  // 모바일: 완료 버튼을 편집창 바로 위에 표시
+  if(isMobile()){
+    editorDone.style.display='block';
+    editorDone.style.left=ex+'px';
+    editorDone.style.top=Math.max(4,ey-36)+'px';
+  }
+
+  editor.focus();editor.select();
 }
 function resizeEd(){editor.style.height='auto';editor.style.height=editor.scrollHeight+'px';}
 function closeEditor(){
   if(!editTarget)return;
   const nv=editor.value.trim()||editTarget.label;
   if(nv!==editTarget.label){pushH();editTarget.label=nv;}
-  editor.style.display='none';editTarget=null;editor.removeEventListener('input',resizeEd);draw();
+  editor.style.display='none';editorDone.style.display='none';
+  editTarget=null;editor.removeEventListener('input',resizeEd);draw();
 }
-editor.addEventListener('blur',closeEditor);
+
+// 완료 버튼
+editorDone.addEventListener('mousedown',e=>{e.preventDefault();closeEditor();});
+editorDone.addEventListener('touchstart',e=>{e.preventDefault();closeEditor();},{passive:false});
+
+// blur: 모바일에선 완료 버튼 탭 시 blur가 먼저 오므로 짧게 지연
+editor.addEventListener('blur',()=>setTimeout(closeEditor,80));
 editor.addEventListener('keydown',e=>{
   if(e.key==='Escape')editor.blur();
   if(e.key==='Tab'){e.preventDefault();editor.blur();if(editTarget)addChildNode(editTarget.id);}
 });
+
+// 모바일: 편집 중 캔버스 탭 → 닫기
+mc.addEventListener('touchstart',e=>{
+  if(editTarget&&editor.style.display!=='none'){
+    closeEditor();
+    e.preventDefault();
+    return;
+  }
+},{passive:false,capture:true});
 
 // ══════════════════════════════════════════════
 // 하이라이트 팝업
