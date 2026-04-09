@@ -2,13 +2,13 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <title>Mind Map</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,'Segoe UI',sans-serif;background:#fff;color:#1a1a1a;height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none;}
 
-#toolbar{display:flex;align-items:center;gap:5px;padding:7px 12px;border-bottom:1px solid #e8e8e5;background:#fff;flex-shrink:0;flex-wrap:wrap;}
+#toolbar{display:flex;align-items:center;gap:5px;padding:7px 12px;border-bottom:1px solid #e8e8e5;background:#fff;flex-shrink:0;flex-wrap:wrap;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .title{font-size:13px;font-weight:600;color:#37352f;margin-right:2px;}
 #toolbar button{font-size:12px;padding:4px 9px;border:1px solid #e2e2de;border-radius:5px;background:#fff;color:#6b6b6b;cursor:pointer;transition:background .1s,color .1s;white-space:nowrap;}
 #toolbar button:hover{background:#f1efe8;color:#37352f;}
@@ -18,9 +18,10 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:#fff;color:#1a1a
 .sep{width:1px;height:18px;background:#e8e8e5;margin:0 1px;flex-shrink:0;}
 #hint{margin-left:auto;font-size:11px;color:#b8b8b8;display:flex;gap:10px;flex-wrap:wrap;}
 #hint span::before{content:'·';margin-right:3px;}
+@media(max-width:600px){#hint{display:none;}}
 
-#canvas-wrap{flex:1;overflow:hidden;position:relative;background:#fafaf8;}
-canvas#mc{display:block;cursor:grab;}
+#canvas-wrap{flex:1;overflow:hidden;position:relative;background:#fafaf8;touch-action:none;}
+canvas#mc{display:block;cursor:grab;touch-action:none;}
 canvas#mc.dragging{cursor:grabbing;}
 #minimap{position:absolute;bottom:14px;right:14px;width:150px;height:94px;border:1px solid #e2e2de;border-radius:8px;background:rgba(255,255,255,.93);overflow:hidden;pointer-events:none;}
 #minimap canvas{width:100%;height:100%;}
@@ -41,20 +42,24 @@ canvas#mc.dragging{cursor:grabbing;}
 .hl-dot:hover{transform:scale(1.3);}
 .hl-dot.none-dot{background:#efefef;display:flex;align-items:center;justify-content:center;font-size:12px;color:#aaa;font-weight:500;}
 
-/* ── 클립보드 불러오기 모달 ── */
-#paste-modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:500;}
-#paste-modal.open{display:flex;}
-#paste-box{background:#fff;border-radius:12px;padding:22px 24px;width:480px;max-width:92vw;box-shadow:0 12px 40px rgba(0,0,0,.16);display:flex;flex-direction:column;gap:14px;}
-#paste-box .pb-title{font-size:14px;font-weight:600;color:#37352f;}
-#paste-box .pb-desc{font-size:12px;color:#999;line-height:1.6;}
-#paste-box textarea{width:100%;height:140px;border:1px solid #e2e2de;border-radius:7px;padding:10px 12px;font-size:12px;font-family:monospace;color:#37352f;resize:vertical;outline:none;line-height:1.5;}
+/* ── 공용 모달 오버레이 ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:500;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:#fff;border-radius:12px;padding:22px 24px;width:400px;max-width:92vw;box-shadow:0 12px 40px rgba(0,0,0,.16);display:flex;flex-direction:column;gap:14px;}
+.modal-box .m-title{font-size:14px;font-weight:600;color:#37352f;}
+.modal-box .m-desc{font-size:13px;color:#666;line-height:1.6;}
+.modal-box .m-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:2px;}
+.modal-box .m-btns button{font-size:13px;padding:6px 18px;border-radius:6px;cursor:pointer;border:1px solid #e2e2de;background:#fff;color:#6b6b6b;transition:background .1s;}
+.modal-box .m-btns button:hover{background:#f1efe8;color:#37352f;}
+.modal-box .m-btns button.danger{background:#c0392b;color:#fff;border-color:#c0392b;}
+.modal-box .m-btns button.danger:hover{background:#a93226;border-color:#a93226;}
+.modal-box .m-btns button.primary{background:#37352f;color:#fff;border-color:#37352f;}
+.modal-box .m-btns button.primary:hover{background:#555;border-color:#555;}
+/* ── 클립보드 붙여넣기 모달 (넓게) ── */
+#paste-box{width:500px;}
+#paste-box textarea{width:100%;height:130px;border:1px solid #e2e2de;border-radius:7px;padding:10px 12px;font-size:11.5px;font-family:monospace;color:#37352f;resize:vertical;outline:none;line-height:1.5;}
 #paste-box textarea:focus{border-color:#378add;}
-#paste-box .pb-err{font-size:12px;color:#c0392b;display:none;}
-#paste-box .pb-btns{display:flex;gap:8px;justify-content:flex-end;}
-#paste-box .pb-btns button{font-size:13px;padding:6px 16px;border-radius:6px;cursor:pointer;border:1px solid #e2e2de;background:#fff;color:#6b6b6b;}
-#paste-box .pb-btns button:hover{background:#f1efe8;color:#37352f;}
-#paste-box .pb-btns button.primary{background:#37352f;color:#fff;border-color:#37352f;}
-#paste-box .pb-btns button.primary:hover{background:#555;border-color:#555;}
+#paste-box .pb-err{font-size:12px;color:#c0392b;display:none;padding:2px 0;}
 
 /* ── 토스트 알림 ── */
 #toast{position:fixed;bottom:36px;left:50%;transform:translateX(-50%) translateY(10px);background:#37352f;color:#fff;font-size:12px;padding:8px 16px;border-radius:20px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:600;white-space:nowrap;}
@@ -102,17 +107,26 @@ canvas#mc.dragging{cursor:grabbing;}
   <div class="hl-row"></div>
 </div>
 
-<!-- 클립보드 불러오기 모달 -->
-<div id="paste-modal">
-  <div id="paste-box">
-    <div class="pb-title">📂 클립보드에서 불러오기</div>
-    <div class="pb-desc">
-      이전에 "클립보드에 저장"으로 복사한 텍스트를 아래에 붙여넣으세요.<br>
-      <strong>Ctrl+V</strong> (Mac: ⌘+V) 로 바로 붙여넣을 수 있어요.
+<!-- 확인 모달 (confirm 대체) -->
+<div id="confirm-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="m-title" id="confirm-title">확인</div>
+    <div class="m-desc" id="confirm-desc"></div>
+    <div class="m-btns">
+      <button id="confirm-cancel">취소</button>
+      <button id="confirm-ok" class="danger">확인</button>
     </div>
-    <textarea id="paste-input" placeholder='{"nodes":[...],"edges":[...],...} 형태의 텍스트를 붙여넣으세요'></textarea>
-    <div class="pb-err" id="paste-err">⚠ 올바른 마인드맵 데이터가 아닙니다. 다시 확인해주세요.</div>
-    <div class="pb-btns">
+  </div>
+</div>
+
+<!-- 클립보드 저장/불러오기 모달 -->
+<div id="paste-modal" class="modal-overlay">
+  <div class="modal-box" id="paste-box">
+    <div class="m-title" id="paste-title">📂 클립보드에서 불러오기</div>
+    <div class="m-desc" id="paste-desc"></div>
+    <textarea id="paste-input" placeholder='저장 데이터를 붙여넣으세요 (Ctrl+V)'></textarea>
+    <div class="pb-err" id="paste-err"></div>
+    <div class="m-btns">
       <button id="paste-cancel">취소</button>
       <button id="paste-ok" class="primary">불러오기</button>
     </div>
@@ -275,7 +289,7 @@ function updateStatus(){
 // 토스트
 // ══════════════════════════════════════════════
 let toastTimer=null;
-function showToast(msg,duration=2200){
+function showToast(msg,duration=2600){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
   clearTimeout(toastTimer);
@@ -283,83 +297,117 @@ function showToast(msg,duration=2200){
 }
 
 // ══════════════════════════════════════════════
+// 자체 confirm 모달
+// ══════════════════════════════════════════════
+const confirmModal=document.getElementById('confirm-modal');
+let confirmResolve=null;
+function showConfirm(title,desc){
+  document.getElementById('confirm-title').textContent=title;
+  document.getElementById('confirm-desc').textContent=desc;
+  confirmModal.classList.add('open');
+  return new Promise(res=>{confirmResolve=res;});
+}
+document.getElementById('confirm-ok').onclick=()=>{confirmModal.classList.remove('open');if(confirmResolve)confirmResolve(true);confirmResolve=null;};
+document.getElementById('confirm-cancel').onclick=()=>{confirmModal.classList.remove('open');if(confirmResolve)confirmResolve(false);confirmResolve=null;};
+confirmModal.addEventListener('click',e=>{if(e.target===confirmModal){confirmModal.classList.remove('open');if(confirmResolve)confirmResolve(false);confirmResolve=null;}});
+
+// ══════════════════════════════════════════════
 // 클립보드 저장 / 불러오기
 // ══════════════════════════════════════════════
 function getMapData(){
-  const ts=new Date().toISOString();
-  return JSON.stringify({_mindmap:true,_saved:ts,nodes,edges,nextId});
+  return JSON.stringify({_mindmap:true,_saved:new Date().toISOString(),nodes,edges,nextId});
 }
-
-function loadMapData(jsonStr){
-  const d=JSON.parse(jsonStr.trim());
+function parseMapData(str){
+  const d=JSON.parse(str.trim());
   if(!d.nodes||!d.edges||!d.nextId)throw new Error('invalid');
   return d;
 }
 
-// 저장: 클립보드에 복사
+// execCommand 기반 복사 (iframe에서도 작동)
+function execCopy(text){
+  const ta=document.createElement('textarea');
+  ta.value=text;
+  ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0;';
+  document.body.appendChild(ta);
+  ta.focus();ta.select();
+  const ok=document.execCommand('copy');
+  document.body.removeChild(ta);
+  return ok;
+}
+
+// 저장 버튼
 document.getElementById('btn-copy').onclick=async()=>{
   const text=getMapData();
-  try{
-    await navigator.clipboard.writeText(text);
-    showToast('✅ 클립보드에 복사됐어요! 노션 코드블록에 붙여넣어 보관하세요.');
-  }catch{
-    // fallback: 텍스트 선택 모달
-    showPasteModal(true,text);
+  // 1순위: 최신 API
+  let ok=false;
+  try{await navigator.clipboard.writeText(text);ok=true;}catch{}
+  // 2순위: execCommand
+  if(!ok){try{ok=execCopy(text);}catch{}}
+  if(ok){
+    showToast('✅ 클립보드에 저장됐어요!  노션 코드블록에 붙여넣어 보관하세요.');
+  }else{
+    // 둘 다 실패 시 → 모달에 텍스트 띄워서 수동 복사
+    openSaveFallbackModal(text);
   }
 };
 
-// 불러오기: 붙여넣기 모달 열기
-document.getElementById('btn-paste').onclick=()=>showPasteModal(false,'');
+// 저장 실패 폴백 모달 (읽기 전용으로 텍스트 표시)
+function openSaveFallbackModal(text){
+  document.getElementById('paste-title').textContent='📋 아래 텍스트를 복사하세요';
+  document.getElementById('paste-desc').innerHTML='자동 복사가 차단됐어요. 아래 텍스트를 전체 선택(<b>Ctrl+A</b>)하고 복사(<b>Ctrl+C</b>)하세요.';
+  const ta=document.getElementById('paste-input');
+  ta.value=text;ta.readOnly=true;
+  document.getElementById('paste-ok').style.display='none';
+  document.getElementById('paste-err').style.display='none';
+  document.getElementById('paste-modal').classList.add('open');
+  setTimeout(()=>{ta.focus();ta.select();},80);
+}
 
-// ── 붙여넣기 모달 ─────────────────────────────
+// 불러오기 버튼 → 모달 바로 열기
+document.getElementById('btn-paste').onclick=()=>{
+  document.getElementById('paste-title').textContent='📂 클립보드에서 불러오기';
+  document.getElementById('paste-desc').innerHTML=
+    '<b>📋 클립보드에 저장</b>으로 복사한 텍스트를 아래에 붙여넣고 불러오기를 눌러주세요.';
+  const ta=document.getElementById('paste-input');
+  ta.value=''; ta.placeholder='여기에 Ctrl+V 로 붙여넣으세요'; ta.readOnly=false;
+  document.getElementById('paste-ok').style.display='';
+  document.getElementById('paste-err').style.display='none';
+  document.getElementById('paste-modal').classList.add('open');
+  setTimeout(()=>ta.focus(),80);
+};
+
+function isValidMapText(str){
+  try{const d=JSON.parse(str.trim());return !!(d.nodes&&d.edges&&d.nextId);}catch{return false;}
+}
+
+// 붙여넣기 모달 닫기
 const pasteModal=document.getElementById('paste-modal');
 const pasteInput=document.getElementById('paste-input');
 const pasteErr=document.getElementById('paste-err');
-
-function showPasteModal(isCopyFallback,prefill){
-  pasteErr.style.display='none';
-  if(isCopyFallback){
-    // 복사 실패 폴백: 텍스트를 직접 보여주고 수동 복사 안내
-    document.querySelector('.pb-title').textContent='📋 아래 텍스트를 복사하세요';
-    document.querySelector('.pb-desc').innerHTML='자동 복사가 차단됐어요. 아래 텍스트를 전체 선택(<strong>Ctrl+A</strong>)하고 복사(<strong>Ctrl+C</strong>)하세요.';
-    pasteInput.value=prefill;
-    pasteInput.readOnly=true;
-    document.getElementById('paste-ok').style.display='none';
-  }else{
-    document.querySelector('.pb-title').textContent='📂 클립보드에서 불러오기';
-    document.querySelector('.pb-desc').innerHTML='이전에 "클립보드에 저장"으로 복사한 텍스트를 붙여넣으세요.<br><strong>Ctrl+V</strong> (Mac: ⌘+V)로 바로 붙여넣을 수 있어요.';
-    pasteInput.value='';
-    pasteInput.readOnly=false;
-    document.getElementById('paste-ok').style.display='';
-  }
-  pasteModal.classList.add('open');
-  setTimeout(()=>pasteInput.focus(),80);
-}
-
+function closePasteModal(){pasteModal.classList.remove('open');pasteInput.readOnly=false;}
 document.getElementById('paste-cancel').onclick=closePasteModal;
 pasteModal.addEventListener('click',e=>{if(e.target===pasteModal)closePasteModal();});
-function closePasteModal(){pasteModal.classList.remove('open');pasteInput.readOnly=false;}
 
+// 불러오기 실행
 document.getElementById('paste-ok').onclick=()=>{
   const text=pasteInput.value.trim();
   pasteErr.style.display='none';
   if(!text){pasteErr.textContent='⚠ 텍스트를 붙여넣어 주세요.';pasteErr.style.display='block';return;}
+  if(!isValidMapText(text)){
+    pasteErr.textContent='⚠ 마인드맵 저장 데이터가 아닙니다. 📋 클립보드에 저장 버튼으로 먼저 저장 후 다시 시도해주세요.';
+    pasteErr.style.display='block';return;
+  }
   try{
-    const d=loadMapData(text);
-    pushH();
-    nodes=d.nodes;edges=d.edges;nextId=d.nextId;
-    selectedIds.clear();
-    closePasteModal();
-    draw();
+    const d=parseMapData(text);
+    pushH();nodes=d.nodes;edges=d.edges;nextId=d.nextId;selectedIds.clear();
+    closePasteModal();draw();
     const ts=d._saved?new Date(d._saved).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
     showToast('✅ 불러오기 완료!'+(ts?' (저장: '+ts+')':''));
   }catch{
-    pasteErr.textContent='⚠ 올바른 마인드맵 데이터가 아닙니다. 다시 확인해주세요.';
-    pasteErr.style.display='block';
+    pasteErr.textContent='⚠ 데이터를 읽는 중 오류가 발생했습니다.';pasteErr.style.display='block';
   }
 };
 
-// Enter로 제출 방지 (textarea라서 그냥 줄바꿈이지만 Ctrl+Enter로 제출)
 pasteInput.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();document.getElementById('paste-ok').click();}
   if(e.key==='Escape')closePasteModal();
@@ -441,6 +489,165 @@ mc.addEventListener('wheel',e=>{
   pan.x=mx-(mx-W/2-pan.x)*nz/zoom-W/2;pan.y=my-(my-H/2-pan.y)*nz/zoom-H/2;zoom=nz;draw();
 },{passive:false});
 
+// ══════════════════════════════════════════════
+// 터치 이벤트 (모바일: 1손가락=이동, 2손가락=핀치줌, 탭=선택, 더블탭=편집, 롱프레스=컨텍스트메뉴)
+// ══════════════════════════════════════════════
+let touch1=null,touch2=null;          // 현재 터치 포인터
+let tPanStart=null,tPanOrig=null;     // 1손가락 패닝
+let tPinchDist0=0,tPinchZoom0=1;     // 2손가락 줌
+let tPinchMid=null;                   // 핀치 중심점
+let tDraggingNode=null,tDragOff=null,tDidDrag=false;
+let tLongTimer=null;
+let tLastTap=0,tLastNode=null;        // 더블탭 감지
+
+function getTouchPos(touch){
+  const rect=mc.getBoundingClientRect();
+  return{x:touch.clientX-rect.left,y:touch.clientY-rect.top};
+}
+function dist2(a,b){return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}
+function midClient(a,b){return{x:(a.clientX+b.clientX)/2,y:(a.clientY+b.clientY)/2};}
+
+mc.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  closeCtxMenu();closeHlPicker();
+  const touches=e.touches;
+
+  if(touches.length===1){
+    touch1=touches[0];touch2=null;
+    const pos=getTouchPos(touch1);
+    const hit=hitNode(pos.x,pos.y);
+
+    // 더블탭 감지
+    const now=Date.now();
+    const isDoubleTap=now-tLastTap<320&&tLastNode===hit;
+    tLastTap=now;tLastNode=hit;
+
+    if(isDoubleTap){
+      clearTimeout(tLongTimer);
+      if(hit)openEditor(hit);
+      else addRootAt(toWo(pos.x,pos.y));
+      return;
+    }
+
+    // 롱프레스 감지 (500ms)
+    clearTimeout(tLongTimer);
+    tLongTimer=setTimeout(()=>{
+      if(tDidDrag)return;
+      const p2=getTouchPos(touch1);
+      const hitL=hitNode(p2.x,p2.y);
+      if(hitL&&!selectedIds.has(hitL.id)){selectedIds.clear();selectedIds.add(hitL.id);draw();}
+      showCtxMenu(touch1.clientX,touch1.clientY,hitL,p2.x,p2.y);
+    },500);
+
+    tDidDrag=false;
+    if(hit){
+      // 노드 드래그
+      if(!selectedIds.has(hit.id)){selectedIds.clear();selectedIds.add(hit.id);}
+      tDraggingNode=hit;
+      const w=toWo(pos.x,pos.y);
+      tDragOff={x:w.x-hit.x,y:w.y-hit.y};
+    }else{
+      // 배경 패닝
+      tDraggingNode=null;
+      tPanStart={x:touch1.clientX,y:touch1.clientY};
+      tPanOrig={x:pan.x,y:pan.y};
+    }
+  }
+
+  if(touches.length===2){
+    clearTimeout(tLongTimer);
+    tDraggingNode=null;
+    touch1=touches[0];touch2=touches[1];
+    tPinchDist0=dist2(touch1,touch2);
+    tPinchZoom0=zoom;
+    const mid=midClient(touch1,touch2);
+    const rect=mc.getBoundingClientRect();
+    tPinchMid={x:mid.x-rect.left,y:mid.y-rect.top};
+    tPanOrig={x:pan.x,y:pan.y};
+    tPanStart={x:mid.x,y:mid.y};
+  }
+},{passive:false});
+
+mc.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  const touches=e.touches;
+
+  if(touches.length===2){
+    // 핀치 줌 + 2손가락 패닝
+    const t1=touches[0],t2=touches[1];
+    const curDist=dist2(t1,t2);
+    const nz=Math.min(4,Math.max(.12,tPinchZoom0*(curDist/tPinchDist0)));
+    // 핀치 중심점 기준 줌
+    const mx=tPinchMid.x,my=tPinchMid.y;
+    pan.x=mx-(mx-W/2-tPanOrig.x)*nz/tPinchZoom0-W/2;
+    pan.y=my-(my-H/2-tPanOrig.y)*nz/tPinchZoom0-H/2;
+    zoom=nz;
+    // 2손가락 이동에 의한 패닝도 반영
+    const mid=midClient(t1,t2);
+    pan.x+=(mid.x-tPanStart.x);
+    pan.y+=(mid.y-tPanStart.y);
+    tPanStart={x:mid.x,y:mid.y};
+    tPanOrig={x:pan.x,y:pan.y};
+    tPinchZoom0=zoom;
+    tPinchDist0=curDist;
+    draw();return;
+  }
+
+  if(touches.length===1){
+    const t=touches[0];
+    const pos=getTouchPos(t);
+    const dx=t.clientX-(tPanStart?tPanStart.x:t.clientX);
+    const dy=t.clientY-(tPanStart?tPanStart.y:t.clientY);
+    if(Math.abs(dx)>4||Math.abs(dy)>4){tDidDrag=true;clearTimeout(tLongTimer);}
+
+    if(tDraggingNode){
+      const w=toWo(pos.x,pos.y);
+      if(selectedIds.size>1&&selectedIds.has(tDraggingNode.id)){
+        const ddx=w.x-tDragOff.x-tDraggingNode.x,ddy=w.y-tDragOff.y-tDraggingNode.y;
+        selectedIds.forEach(id=>{const n=nodes.find(n=>n.id===id);if(n){n.x+=ddx;n.y+=ddy;}});
+        tDragOff={x:w.x-tDraggingNode.x,y:w.y-tDraggingNode.y};
+      }else{tDraggingNode.x=w.x-tDragOff.x;tDraggingNode.y=w.y-tDragOff.y;}
+      draw();
+    }else if(tPanOrig){
+      pan.x=tPanOrig.x+(t.clientX-tPanStart.x);
+      pan.y=tPanOrig.y+(t.clientY-tPanStart.y);
+      draw();
+    }
+  }
+},{passive:false});
+
+mc.addEventListener('touchend',e=>{
+  clearTimeout(tLongTimer);
+  e.preventDefault();
+
+  if(e.changedTouches.length&&e.touches.length===0){
+    if(tDraggingNode&&tDidDrag)pushH();
+    // 탭 (드래그 없음) → 선택
+    if(!tDidDrag&&tDraggingNode){
+      selectedIds.clear();selectedIds.add(tDraggingNode.id);draw();
+    }
+    if(!tDidDrag&&!tDraggingNode){
+      // 빈 곳 탭 → 선택 해제
+      const pos=getTouchPos(e.changedTouches[0]);
+      const hit=hitNode(pos.x,pos.y);
+      if(!hit){selectedIds.clear();draw();}
+    }
+  }
+
+  // 손가락 수가 줄어 1개 남으면 남은 터치로 패닝 재설정
+  if(e.touches.length===1){
+    touch2=null;
+    const t=e.touches[0];
+    tPanStart={x:t.clientX,y:t.clientY};
+    tPanOrig={x:pan.x,y:pan.y};
+    tDraggingNode=null;
+  }
+
+  if(e.touches.length===0){
+    touch1=null;touch2=null;tDraggingNode=null;tPanStart=null;tPanOrig=null;tDidDrag=false;
+  }
+},{passive:false});
+
 document.addEventListener('keydown',e=>{
   if(e.target===editor||e.target===pasteInput)return;
   if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();undo();return;}
@@ -449,7 +656,7 @@ document.addEventListener('keydown',e=>{
   if((e.key==='Delete'||e.key==='Backspace')&&sel.length){e.preventDefault();pushH();sel.forEach(id=>rmTree(id));selectedIds.clear();draw();return;}
   if(e.key==='Tab'&&sel.length===1){e.preventDefault();addChildNode(sel[0]);return;}
   if(e.key==='Enter'&&!e.shiftKey&&sel.length===1){e.preventDefault();const n=nodes.find(n=>n.id===sel[0]);if(n)openEditor(n);return;}
-  if(e.key==='Escape'){closeCtxMenu();closeHlPicker();closePasteModal();selectedIds.clear();draw();}
+  if(e.key==='Escape'){closeCtxMenu();closeHlPicker();closePasteModal();confirmModal.classList.remove('open');selectedIds.clear();draw();}
   if((e.ctrlKey||e.metaKey)&&e.key==='a'){e.preventDefault();nodes.forEach(n=>selectedIds.add(n.id));draw();}
   // Ctrl+S: 클립보드 저장 단축키
   if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();document.getElementById('btn-copy').click();}
@@ -563,7 +770,10 @@ document.getElementById('btn-fit').onclick=()=>{
   zoom=Math.min(1.2,Math.min(W/((Math.max(...xs)-Math.min(...xs)||200)+200),H/((Math.max(...ys)-Math.min(...ys)||200)+140)));
   pan={x:-cx*zoom,y:-cy*zoom};draw();
 };
-document.getElementById('btn-reset').onclick=()=>{if(!confirm('마인드맵을 초기화할까요?'))return;pushH();initDefault();draw();};
+document.getElementById('btn-reset').onclick=async()=>{
+  const ok=await showConfirm('초기화','마인드맵을 초기화할까요? 현재 작업 내용이 모두 지워져요.');
+  if(!ok)return;pushH();initDefault();draw();
+};
 
 // ══════════════════════════════════════════════
 // 기본 데이터
